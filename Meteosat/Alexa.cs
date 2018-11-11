@@ -15,7 +15,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 #endregion
@@ -51,7 +50,7 @@ namespace Meteosat
         {
             string json = await req.ReadAsStringAsync();
             SkillRequest skillRequest = JsonConvert.DeserializeObject<SkillRequest>(json);
-            bool isValid = await ValidateRequest(req, skillRequest);
+            bool isValid = await Alexa.ValidateRequest(req, skillRequest);
             if (!isValid)
             {
                 return new BadRequestResult();
@@ -86,7 +85,7 @@ namespace Meteosat
                         break;
                     case "AMAZON.StopIntent":
                     case "AMAZON.CancelIntent":
-                        response = Alexa.CreteGoodbyeResponse();
+                        response = Alexa.CreateGoodbyeResponse();
                         break;
                     case "AMAZON.HelpIntent":
                         response = Alexa.CreateHelpResponse();
@@ -105,11 +104,86 @@ namespace Meteosat
             }
             else if (requestType == typeof(SessionEndedRequest))
             {
-                response = ResponseBuilder.Empty();
+                response = Alexa.CreateGoodbyeResponse();
                 response.Response.ShouldEndSession = true;
             }
 
             return new OkObjectResult(response);
+        }
+
+        private static SkillResponse CreateHelpResponse()
+        {
+            string help = "Puoi dire 'notte' o 'infrarosso' per visualizzare le immagini all'infrarosso oppure 'giorno' o 'normale' per la visione diurna.";
+            var response = ResponseBuilder.TellWithCard("Ecco le istruzioni",
+                "Aiuto", help);
+            response.Response.OutputSpeech = new PlainTextOutputSpeech {Text = help};
+            response.Response.ShouldEndSession = false;
+            return response;
+        }
+
+        /// <summary>
+        /// Creates the metosat response.
+        /// </summary>
+        /// <param name="infrared">if set to <c>true</c> [infrared].</param>
+        /// <returns></returns>
+        private static SkillResponse CreateResponse(bool infrared)
+        {
+            string text = infrared ? "Ecco le ultime immagini all' infraross dal satellite meteosàt" : "Ecco le ultime immagini dal satellite meteosàt";
+            SkillResponse response = ResponseBuilder.Tell(text);
+            DisplayRenderTemplateDirective display = new DisplayRenderTemplateDirective();
+
+            var bodyTemplate = new ListTemplate2
+            {
+                Title = "Immagini meteosat",
+                BackButton = "HIDDEN"
+            };
+
+            foreach (KeyValuePair<string, string> info in infos)
+            {
+                var image = new TemplateImage() {ContentDescription = $"Vista {info.Key}"};
+
+                string url = infrared ? $"https://api.sat24.com/mostrecent/{info.Value}/infraPolair" : $"https://api.sat24.com/mostrecent/{info.Value}/visual5hdcomplete";
+
+                image.Sources.Add(new ImageSource()
+                {
+                    Url = url,
+                    Height = 615,
+                    Width = 845,
+                });
+
+                ListItem item = new ListItem
+                {
+                    Image = image,
+                    Content = new TemplateContent
+                    {
+                        Primary = new TemplateText()
+                        {
+                            Text = $"{info.Key}",
+                            Type = "PlainText"
+                        }
+                    }
+                };
+
+                bodyTemplate.Items.Add(item);
+            }
+
+            display.Template = bodyTemplate;
+            response.Response.Directives.Add(display);
+            response.Response.ShouldEndSession = false;
+            return response;
+        }
+
+        private static SkillResponse CreateGoodbyeResponse()
+        {
+            return ResponseBuilder.Tell("Arrivederci!");
+        }
+
+        private static SkillResponse CreteScrollResponse(bool back)
+        {
+            string text = back ? "Fai scorrere lo schermo verso destra per l'immagine precedente" : "Fai scorrere lo schermo verso sinistra per l'immagine successiva";
+            var response = ResponseBuilder.Tell(text);
+            response.Response.ShouldEndSession = false;
+            return response;
         }
 
         /// <summary>
@@ -150,7 +224,7 @@ namespace Meteosat
             {
                 return false;
             }
-            
+
             bool valid = await RequestVerification.Verify(signature, certUrl, body);
             bool isTimestampValid = RequestVerification.RequestTimestampWithinTolerance(skillRequest);
 
@@ -158,83 +232,8 @@ namespace Meteosat
             {
                 valid = false;
             }
+
             return valid;
-        }
-
-        private static SkillResponse CreateHelpResponse()
-        {
-            string help = "Puoi dire 'notte' o 'infrarosso' per visualizzare le immagini all'infrarosso oppure 'giorno' o 'normale' per la visione diurna.";
-            var response = ResponseBuilder.TellWithCard("Ecco le istruzioni",
-                "Aiuto", help);
-            response.Response.OutputSpeech = new PlainTextOutputSpeech {Text = help};
-            response.Response.ShouldEndSession = false;
-            return response;
-        }
-
-        /// <summary>
-        /// Creates the metosat response.
-        /// </summary>
-        /// <param name="infrared">if set to <c>true</c> [infrared].</param>
-        /// <returns></returns>
-        private static SkillResponse CreateResponse(bool infrared)
-        {
-            string text = infrared ? "Ecco le ultime immagini all' infraross dal satellite meteosàt" : "Ecco le ultime immagini dal satellite meteosàt";
-            SkillResponse response = ResponseBuilder.Tell(text);
-            DisplayRenderTemplateDirective display = new DisplayRenderTemplateDirective();
-
-            var bodyTemplate = new ListTemplate2
-            {
-                Title = "Immagini meteosat",
-                BackButton = "HIDDEN"
-            };
-
-
-            foreach (KeyValuePair<string, string> info in infos)
-            {
-                var image = new TemplateImage() {ContentDescription = $"Vista {info.Key}"};
-
-                string url = infrared ? $"https://api.sat24.com/mostrecent/{info.Value}/infraPolair" : $"https://api.sat24.com/mostrecent/{info.Value}/visual5hdcomplete";
-
-                image.Sources.Add(new ImageSource()
-                {
-                    Url = url,
-                    Height = 615,
-                    Width = 845,
-                });
-
-                ListItem item = new ListItem
-                {
-                    Image = image,
-                    Content = new TemplateContent
-                    {
-                        Primary = new TemplateText()
-                        {
-                            Text = $"{info.Key}",
-                            Type = "PlainText"
-                        }
-                    }
-                };
-
-                bodyTemplate.Items.Add(item);
-            }
-
-            display.Template = bodyTemplate;
-            response.Response.Directives.Add(display);
-            response.Response.ShouldEndSession = false;
-            return response;
-        }
-
-        private static SkillResponse CreteGoodbyeResponse()
-        {
-            return ResponseBuilder.Tell("Arrivederci!");
-        }
-
-        private static SkillResponse CreteScrollResponse(bool back)
-        {
-            string text = back ? "Fai scorrere lo schermo verso destra per l'immagine precedente" : "Fai scorrere lo schermo verso sinistra per l'immagine successiva";
-            var response = ResponseBuilder.Tell(text);
-            response.Response.ShouldEndSession = false;
-            return response;
         }
     }
 }
