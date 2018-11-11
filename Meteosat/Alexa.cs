@@ -182,24 +182,24 @@ namespace Meteosat
             SkillResponse response = ResponseBuilder.Tell(text);
             DisplayRenderTemplateDirective display = new DisplayRenderTemplateDirective();
 
-            var bodyTemplate = new ListTemplate2()
+            var bodyTemplate = new ListTemplate2
             {
-                Title = "Immagini meteosat"
+                Title = "Immagini meteosat",
+                BackButton = "HIDDEN"
             };
 
-            bodyTemplate.BackButton = "HIDDEN";
 
             foreach (KeyValuePair<string, string> info in infos)
             {
                 var image = new TemplateImage() {ContentDescription = $"Vista {info.Key}"};
 
-                string url = infrared ? $"https://api.sat24.com/mostrecent/{info.Value}/infraPolair'%20width=340%20height=340" : $"https://api.sat24.com/mostrecent/{info.Value}/visual5hdcomplete'%20width=340%20height=340";
+                string url = infrared ? $"https://api.sat24.com/mostrecent/{info.Value}/infraPolair" : $"https://api.sat24.com/mostrecent/{info.Value}/visual5hdcomplete";
 
                 image.Sources.Add(new ImageSource()
                 {
                     Url = url,
-                    Height = 340,
-                    Width = 340,
+                    Height = 845,
+                    Width = 615,
                 });
 
                 ListItem item = new ListItem
