@@ -198,8 +198,8 @@ namespace Meteosat
                 image.Sources.Add(new ImageSource()
                 {
                     Url = url,
-                    Height = 845,
-                    Width = 615,
+                    Height = 615,
+                    Width = 845,
                 });
 
                 ListItem item = new ListItem
