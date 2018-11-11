@@ -21,8 +21,10 @@ using Newtonsoft.Json;
 
 namespace Meteosat
 {
-    public static class Alexa
+    public static partial class Alexa
     {
+
+
         private static readonly Dictionary<string, string> infos = new Dictionary<string, string>();
 
         static Alexa()
@@ -50,11 +52,11 @@ namespace Meteosat
         {
             string json = await req.ReadAsStringAsync();
             SkillRequest skillRequest = JsonConvert.DeserializeObject<SkillRequest>(json);
-            bool isValid = await Alexa.ValidateRequest(req, skillRequest);
-            if (!isValid)
-            {
-                return new BadRequestResult();
-            }
+            //bool isValid = await Alexa.ValidateRequest(req, skillRequest);
+            //if (!isValid)
+            //{
+            //    return new BadRequestResult();
+            //}
 
             //We check if invoking device supports diplay
             if (!skillRequest.Context.System.Device.IsInterfaceSupported("Display"))
@@ -69,7 +71,7 @@ namespace Meteosat
 
             if (requestType == typeof(LaunchRequest))
             {
-                response = Alexa.CreateResponse(false);
+                response = Alexa.CreateResponse(ViewMode.Normal);
             }
             else if (requestType == typeof(IntentRequest))
             {
@@ -77,11 +79,17 @@ namespace Meteosat
                 switch (intentRequest.Intent.Name)
                 {
                     case "infrared":
-                    case "AMAZON.NavigateHomeIntent":
-                        response = Alexa.CreateResponse(true);
+                        response = Alexa.CreateResponse(ViewMode.Infrared);
                         break;
                     case "normal":
-                        response = Alexa.CreateResponse(false);
+                    case "AMAZON.NavigateHomeIntent":
+                        response = Alexa.CreateResponse(ViewMode.Normal);
+                        break;
+                    case "rain":
+                        response = Alexa.CreateResponse(ViewMode.Rain);
+                        break;
+                    case "snow":
+                        response = Alexa.CreateResponse(ViewMode.Snow);
                         break;
                     case "AMAZON.StopIntent":
                     case "AMAZON.CancelIntent":
@@ -113,7 +121,7 @@ namespace Meteosat
 
         private static SkillResponse CreateHelpResponse()
         {
-            string help = "Puoi dire 'notte' o 'infrarosso' per visualizzare le immagini all'infrarosso oppure 'giorno' o 'normale' per la visione diurna.";
+            string help = "Puoi dire 'notte' o 'infrarosso' per le immagini all'infrarosso oppure 'giorno' o 'normale' per la visione diurna oppure 'pioggia' o 'neve' per la immagini radar.";
             var response = ResponseBuilder.TellWithCard("Ecco le istruzioni",
                 "Aiuto", help);
             response.Response.OutputSpeech = new PlainTextOutputSpeech {Text = help};
@@ -126,9 +134,29 @@ namespace Meteosat
         /// </summary>
         /// <param name="infrared">if set to <c>true</c> [infrared].</param>
         /// <returns></returns>
-        private static SkillResponse CreateResponse(bool infrared)
+        private static SkillResponse CreateResponse(ViewMode mode)
         {
-            string text = infrared ? "Ecco le ultime immagini all' infraross dal satellite meteosàt" : "Ecco le ultime immagini dal satellite meteosàt";
+            string text = null;
+            string url = null;
+
+            switch (mode)
+            {
+                case ViewMode.Normal:
+                    text = "Ecco le ultime immagini dal satellite meteosàt";
+                    break;
+                case ViewMode.Infrared:
+                    text = "Ecco le ultime immagini all' infrarosso dal satellite meteosàt";
+                    break;
+                case ViewMode.Rain:
+                    text = "Ecco le ultime immagini radar pioggia dal satellite meteosàt";
+                    break;
+                case ViewMode.Snow:
+                    text = "Ecco le ultime immagini radar neve dal satellite meteosàt";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            }
+            
             SkillResponse response = ResponseBuilder.Tell(text);
             DisplayRenderTemplateDirective display = new DisplayRenderTemplateDirective();
 
@@ -142,7 +170,23 @@ namespace Meteosat
             {
                 var image = new TemplateImage() {ContentDescription = $"Vista {info.Key}"};
 
-                string url = infrared ? $"https://api.sat24.com/mostrecent/{info.Value}/infraPolair" : $"https://api.sat24.com/mostrecent/{info.Value}/visual5hdcomplete";
+                switch (mode)
+                {
+                    case ViewMode.Normal:
+                        url = "https://api.sat24.com/mostrecent/{info.Value}/visual5hdcomplete";
+                        break;
+                    case ViewMode.Infrared:
+                        url = "https://api.sat24.com/mostrecent/{info.Value}/infraPolair";
+                        break;
+                    case ViewMode.Rain:
+                        url = "https://api.sat24.com/mostrecent/{info.Value}/rainTMC";
+                        break;
+                    case ViewMode.Snow:
+                        url = "https://api.sat24.com/mostrecent/{info.Value}/snow";
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+                }
 
                 image.Sources.Add(new ImageSource()
                 {
