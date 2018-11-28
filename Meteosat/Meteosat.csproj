@@ -3,6 +3,12 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <AzureFunctionsVersion>v2</AzureFunctionsVersion>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DefineConstants>TRACE;DEPLOY</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Alexa.NET" Version="1.5.5" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.13" />

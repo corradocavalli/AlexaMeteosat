@@ -1,3 +1,5 @@
+#define DEPLOY
+
 #region Using
 
 using System;
@@ -52,7 +54,7 @@ namespace Meteosat
         {
             string json = await req.ReadAsStringAsync();
             SkillRequest skillRequest = JsonConvert.DeserializeObject<SkillRequest>(json);
-#if !DEBUG
+#if DEPLOY
             bool isValid = await Alexa.ValidateRequest(req, skillRequest);
             if (!isValid)
             {
@@ -126,7 +128,7 @@ namespace Meteosat
             string help = "Puoi dire 'notte' o 'infrarosso' per le immagini all'infrarosso oppure 'giorno' o 'normale' per la visione diurna oppure 'pioggia' o 'neve' per la immagini radar. oppure fai scorrere lo schermo verso sinistra per visualizzare le varie viste offerte dal satellite.";
             var response = ResponseBuilder.TellWithCard("Ecco le istruzioni",
                 "Aiuto", help);
-            response.Response.OutputSpeech = new PlainTextOutputSpeech {Text = help};
+            response.Response.OutputSpeech = new PlainTextOutputSpeech { Text = help };
             response.Response.ShouldEndSession = false;
             return response;
         }
@@ -160,7 +162,7 @@ namespace Meteosat
                 default:
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
             }
-            
+
             SkillResponse response = ResponseBuilder.Tell(text);
             DisplayRenderTemplateDirective display = new DisplayRenderTemplateDirective();
 
@@ -172,7 +174,7 @@ namespace Meteosat
 
             foreach (KeyValuePair<string, string> info in infos)
             {
-                var image = new TemplateImage() {ContentDescription = $"Vista {info.Key}"};
+                var image = new TemplateImage() { ContentDescription = $"Vista {info.Key}" };
 
                 switch (mode)
                 {
