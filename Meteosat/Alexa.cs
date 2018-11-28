@@ -52,11 +52,13 @@ namespace Meteosat
         {
             string json = await req.ReadAsStringAsync();
             SkillRequest skillRequest = JsonConvert.DeserializeObject<SkillRequest>(json);
-            //bool isValid = await Alexa.ValidateRequest(req, skillRequest);
-            //if (!isValid)
-            //{
-            //    return new BadRequestResult();
-            //}
+#if !DEBUG
+            bool isValid = await Alexa.ValidateRequest(req, skillRequest);
+            if (!isValid)
+            {
+                return new BadRequestResult();
+            }
+#endif
 
             //We check if invoking device supports diplay
             if (!skillRequest.Context.System.Device.IsInterfaceSupported("Display"))
@@ -121,7 +123,7 @@ namespace Meteosat
 
         private static SkillResponse CreateHelpResponse()
         {
-            string help = "Puoi dire 'notte' o 'infrarosso' per le immagini all'infrarosso oppure 'giorno' o 'normale' per la visione diurna oppure 'pioggia' o 'neve' per la immagini radar.";
+            string help = "Puoi dire 'notte' o 'infrarosso' per le immagini all'infrarosso oppure 'giorno' o 'normale' per la visione diurna oppure 'pioggia' o 'neve' per la immagini radar. oppure fai scorrere lo schermo verso sinistra per visualizzare le varie viste offerte dal satellite.";
             var response = ResponseBuilder.TellWithCard("Ecco le istruzioni",
                 "Aiuto", help);
             response.Response.OutputSpeech = new PlainTextOutputSpeech {Text = help};
@@ -139,19 +141,21 @@ namespace Meteosat
             string text = null;
             string url = null;
 
+            string help = "Puoi dire aiuto per conoscere le opzioni disponibili.";
+
             switch (mode)
             {
                 case ViewMode.Normal:
-                    text = "Ecco le ultime immagini dal satellite meteosàt";
+                    text = $"Ecco le ultime immagini dal satellite meteosàt, {help}";
                     break;
                 case ViewMode.Infrared:
-                    text = "Ecco le ultime immagini all' infrarosso dal satellite meteosàt";
+                    text = $"Ecco le ultime immagini all' infrarosso dal satellite meteosàt, {help}";
                     break;
                 case ViewMode.Rain:
-                    text = "Ecco le ultime immagini radar pioggia dal satellite meteosàt";
+                    text = $"Ecco le ultime immagini radar pioggia dal satellite meteosàt, {help}";
                     break;
                 case ViewMode.Snow:
-                    text = "Ecco le ultime immagini radar neve dal satellite meteosàt";
+                    text = $"Ecco le ultime immagini radar neve dal satellite meteosàt, {help}";
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
